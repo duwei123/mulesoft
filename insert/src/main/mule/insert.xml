@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+	<apikit:config outboundHeadersMapName="outboundHeadersMapName" httpStatusVarName="httpStatus" doc:name="Router" doc:id="d45608ab-0666-4e63-b36e-e422d22fdb68" name="Router" raml="insertApi.raml">
+		<apikit:flow-mappings >
+			<apikit:flow-mapping resource="/insert" action="post" content-type="application/json" flow-ref="insertFlow1" />
+			<apikit:flow-mapping resource="/login" action="post" content-type="application/json" flow-ref="insertFlow3" />
+		</apikit:flow-mappings>
+	</apikit:config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="84c77c03-3f59-4f04-975d-5ba90bcf0526" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="cb2db4ff-1a62-434c-9c74-2d3bcc6563ad" >
+		<db:my-sql-connection host="127.0.0.1" port="3306" user="root" password="1234" database="test" />
+	</db:config>
+	<db:config name="Database_Config1" doc:name="Database Config" doc:id="e55646af-d94b-418b-a85a-35cef22e1deb" >
+		<db:my-sql-connection host="127.0.0.1" port="3306" user="root" password="1234" database="test" />
+	</db:config>
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="de80ab7d-dac0-4f2c-8b82-9797a0ae6d7b" >
+		<email:smtp-connection host="smtp.163.com" user="15829775117@163.com" password="chendong3412337" />
+	</email:smtp-config>
+	<flow name="insertFlow" doc:id="44ba7b22-085c-41ce-8c80-80aa581e1375" >
+		<http:listener doc:name="Listener" doc:id="09e154e9-a6a5-471b-8278-cc8a3f3e22eb" config-ref="HTTP_Listener_config" path="/api/*"/>
+		<apikit:router doc:name="APIkit Router" doc:id="529108ec-d1c9-4051-9832-8defdeacbc5f" config-ref="Router"/>
+	</flow>
+	<flow name="insertFlow2" doc:id="cdf40458-fa90-4636-8af4-8ba259527386" >
+		<db:select doc:name="Select" doc:id="8fb76c90-21d0-4df1-a23c-e8d8fb244408" config-ref="Database_Config">
+			<db:sql >select * from student</db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="3926ae43-481e-47fa-89d4-91ba6f7418dd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+students:payload map(student,index)->{
+	id:payload[index].id,
+	name:payload[index].name,
+	age:payload[index].age,
+	address:payload[index].address
+
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-payload value="#[sizeOf(payload)]" doc:name="Set Payload" doc:id="c6de8094-e299-48c9-b0b2-c9b8deed6efa" />
+	</flow>
+	<flow name="insertFlow3" doc:id="fc27614e-eba5-4624-b76f-d91c2e5160cb" >
+		<set-variable value="#[message.payload.name]" doc:name="Set Variable" doc:id="3a4f032c-9736-4b7c-8008-05d4566d96cd" variableName="name"/>
+		<set-variable value="#[message.payload.password]" doc:name="Set Variable" doc:id="74ab4089-6876-4e23-9fee-b1f3a3ec7b5e" variableName="password"/>
+		<db:select doc:name="Select" doc:id="1c89dc85-c617-46b3-99ba-6c3efc8d98a2" config-ref="Database_Config">
+			<db:sql >select * from  student where name=:name and password=:password</db:sql>
+		</db:select>
+		<choice doc:name="Choice" doc:id="06117a5b-104f-4002-b06f-bae3ec5c443f" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<set-payload value='"login success"' doc:name="Set Payload" doc:id="5120776e-33af-4c9b-8fd6-191d13bc8b4c" />
+			</when>
+			<otherwise >
+				<set-payload value='"login fail"' doc:name="Set Payload" doc:id="b913a2ed-d8fc-4fb7-9efe-02448da95437" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="insertFlow1" doc:id="61d187d8-f185-4b19-b737-85a6722fb15c" >
+		<set-variable value="#[message.payload.name]" doc:name="Set Variable" doc:id="6df1e906-2d23-41bb-896c-560fef0cb27c" variableName="name"/>
+		<logger level="INFO" doc:name="Logger" doc:id="45f6c9d2-477c-4648-ac3c-74f006292031" message="#[vars.name]"/>
+		<set-variable value="#[message.payload.password]" doc:name="Set Variable" doc:id="44db46ab-325c-4556-9591-332d2692901b" variableName="password"/>
+		<logger level="INFO" doc:name="Logger" doc:id="600848ff-d1dd-4d0b-a7bb-b55a6dcce3e0" message="#[vars.password]"/>
+		<db:insert doc:name="Insert" doc:id="e3b11ebe-92ac-471e-9219-9c0863bff056" config-ref="Database_Config">
+			<db:sql>INSERT INTO student(name,password) values(:a,:b)</db:sql>
+			<db:input-parameters ><![CDATA[#[{a:vars.name,b:vars.password}]]]></db:input-parameters>
+			<db:auto-generated-keys-column-indexes />
+		</db:insert>
+		<choice doc:name="Choice" doc:id="0a66c1fb-63c0-4bde-82ac-f6f803a48cf7" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<set-payload value='"insert success"' doc:name="Set Payload" doc:id="5b4c5877-135b-4fc2-8d02-777ba97f528b" />
+				<email:send doc:name="Send" doc:id="d78c105b-85f8-42c5-ba73-8efc2e67d513" config-ref="Email_SMTP" fromAddress="15829775117@163.com" subject="insert">
+					<email:to-addresses >
+						<email:to-address value="15829775117@163.com" />
+					</email:to-addresses>
+					<email:cc-addresses >
+						<email:cc-address value="15829775117@163.com" />
+					</email:cc-addresses>
+					<email:body contentType="text/plain" encoding="UTF-8" >
+						<email:content ><![CDATA[#["insert success"]]]></email:content>
+					</email:body>
+				</email:send>
+			</when>
+			<otherwise >
+				<set-payload value='"insert fail"' doc:name="Set Payload" doc:id="7c5a7a3d-8069-440e-832a-9edb6de374d7" />
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
